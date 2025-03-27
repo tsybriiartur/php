@@ -33,11 +33,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
 
 $clients = readClients($filename);
 
-// Сортування за зростанням суми кредиту
-usort($clients, fn($a, $b) => $a[5] <=> $b[5]);
+// Фільтрація за номером телефону
+$searchDigits = $_GET['search'] ?? '';
+$filteredClients = array_filter($clients, fn($client) => strpos($client[6], $searchDigits) !== false);
 
-// Обчислення загальної суми кредиту
-$totalCredit = array_reduce($clients, fn($sum, $client) => $sum + (float)$client[5], 0);
 ?>
 
 <!DOCTYPE html>
@@ -114,7 +113,13 @@ $totalCredit = array_reduce($clients, fn($sum, $client) => $sum + (float)$client
 </head>
 <body>
     <div class="container">
-        <h2>Список клієнтів банку (Впорядковано за сумою кредиту)</h2>
+        <h2>Пошук клієнтів за номером телефону</h2>
+        <form method="get">
+            <input type="text" name="search" placeholder="Введіть цифри телефону" value="<?= htmlspecialchars($searchDigits) ?>">
+            <button type="submit">Знайти</button>
+        </form>
+        
+        <h2>Список клієнтів банку</h2>
         <table>
             <tr>
                 <th>Прізвище</th>
@@ -125,7 +130,7 @@ $totalCredit = array_reduce($clients, fn($sum, $client) => $sum + (float)$client
                 <th>Сума кредиту (грн)</th>
                 <th>Телефон</th>
             </tr>
-            <?php foreach ($clients as $client): ?>
+            <?php foreach ($filteredClients as $client): ?>
                 <tr>
                     <td><?= htmlspecialchars($client[0]) ?></td>
                     <td><?= htmlspecialchars($client[1]) ?></td>
@@ -137,7 +142,6 @@ $totalCredit = array_reduce($clients, fn($sum, $client) => $sum + (float)$client
                 </tr>
             <?php endforeach; ?>
         </table>
-        <p><strong>Загальна сума кредиту: <?= number_format($totalCredit, 2, '.', ' ') ?> грн</strong></p>
         
         <h2>Додати клієнта</h2>
         <form method="post">
