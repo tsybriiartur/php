@@ -32,6 +32,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
 }
 
 $clients = readClients($filename);
+
+// Сортування за зростанням суми кредиту
+usort($clients, fn($a, $b) => $a[5] <=> $b[5]);
+
+// Обчислення загальної суми кредиту
+$totalCredit = array_reduce($clients, fn($sum, $client) => $sum + (float)$client[5], 0);
 ?>
 
 <!DOCTYPE html>
@@ -108,7 +114,7 @@ $clients = readClients($filename);
 </head>
 <body>
     <div class="container">
-        <h2>Список клієнтів банку</h2>
+        <h2>Список клієнтів банку (Впорядковано за сумою кредиту)</h2>
         <table>
             <tr>
                 <th>Прізвище</th>
@@ -131,6 +137,7 @@ $clients = readClients($filename);
                 </tr>
             <?php endforeach; ?>
         </table>
+        <p><strong>Загальна сума кредиту: <?= number_format($totalCredit, 2, '.', ' ') ?> грн</strong></p>
         
         <h2>Додати клієнта</h2>
         <form method="post">
