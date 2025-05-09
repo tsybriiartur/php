@@ -1,5 +1,6 @@
 <?php
 require_once 'db.php'; // Підключення до бази даних
+require_once 'Client.php'; // Підключення класу Client
 
 // Додавання нового клієнта
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
@@ -12,16 +13,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
     $phone = trim($_POST["phone"]);
 
     if ($surname && $name && $address && $birthdate && $gender && $credit && $phone) {
-        // Додавання клієнта в таблицю clients
-        $stmt = $pdo->prepare("INSERT INTO clients (surname, name, address, birthdate, gender, credit) 
-                               VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$surname, $name, $address, $birthdate, $gender, $credit]);
-        $clientId = $pdo->lastInsertId(); // Отримуємо id нового клієнта
-
-        // Додавання телефону в таблицю phones
-        $stmt = $pdo->prepare("INSERT INTO phones (client_id, phone) VALUES (?, ?)");
-        $stmt->execute([$clientId, $phone]);
-
+        $client = new Client($surname, $name, $address, $birthdate, $gender, $credit, $phone);
+        $client->save();
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
     } else {
@@ -29,14 +22,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
     }
 }
 
-// Пошук за номером телефону
-$searchDigits = $_GET['search'] ?? '';
-$query = "SELECT clients.*, phones.phone FROM clients 
-          JOIN phones ON clients.id = phones.client_id 
-          WHERE phones.phone LIKE ?";
-$stmt = $pdo->prepare($query);
-$stmt->execute(["%$searchDigits%"]);
-$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Пошук клієнтів за датою народження
+$searchDate = $_GET['search_date'] ?? '';
+$clients = [];
+if ($searchDate) {
+    $clients = Client::getByBirthdate($searchDate);
+} else {
+    $clients = Client::getAll();
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -107,53 +101,57 @@ $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         .error {
             color: red;
-            font-weight: bold;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Пошук клієнтів за номером телефону</h2>
-        <form method="get">
-            <input type="text" name="search" placeholder="Введіть цифри телефону" value="<?= htmlspecialchars($searchDigits) ?>">
-            <button type="submit">Знайти</button>
-        </form>
-        
-        <h2>Список клієнтів банку</h2>
-        <table>
-            <tr>
-                <th>Прізвище</th>
-                <th>Ім'я</th>
-                <th>Адреса</th>
-                <th>Дата народження</th>
-                <th>Стать</th>
-                <th>Сума кредиту (грн)</th>
-                <th>Телефон</th>
-            </tr>
-            <?php foreach ($clients as $client): ?>
-                <tr>
-                    <td><?= htmlspecialchars($client['surname']) ?></td>
-                    <td><?= htmlspecialchars($client['name']) ?></td>
-                    <td><?= htmlspecialchars($client['address']) ?></td>
-                    <td><?= htmlspecialchars($client['birthdate']) ?></td>
-                    <td><?= htmlspecialchars($client['gender']) ?></td>
-                    <td><?= htmlspecialchars($client['credit']) ?></td>
-                    <td><?= htmlspecialchars($client['phone']) ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
-        
-        <h2>Додати клієнта</h2>
-        <form method="post">
+        <h2>Додати нового клієнта</h2>
+        <form method="POST" action="">
             <input type="text" name="surname" placeholder="Прізвище" required>
             <input type="text" name="name" placeholder="Ім'я" required>
             <input type="text" name="address" placeholder="Адреса" required>
-            <input type="date" name="birthdate" required>
+            <input type="date" name="birthdate" placeholder="Дата народження" required>
             <input type="text" name="gender" placeholder="Стать" required>
-            <input type="number" name="credit" placeholder="Сума кредиту (грн)" required>
+            <input type="number" name="credit" placeholder="Сума кредиту" required>
             <input type="text" name="phone" placeholder="Телефон" required>
-            <button type="submit">Додати</button>
+            <button type="submit">Додати клієнта</button>
         </form>
+
+        <h2>Пошук клієнтів за датою народження</h2>
+        <form method="GET" action="">
+            <input type="date" name="search_date" placeholder="Дата народження">
+            <button type="submit">Пошук</button>
+        </form>
+
+        <h3>Клієнти:</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Прізвище</th>
+                    <th>Ім'я</th>
+                    <th>Адреса</th>
+                    <th>Дата народження</th>
+                    <th>Стать</th>
+                    <th>Сума кредиту</th>
+                    <th>Телефон</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($clients as $client): ?>
+                <tr>
+                    <td><?= htmlspecialchars($client->surname) ?></td>
+                    <td><?= htmlspecialchars($client->name) ?></td>
+                    <td><?= htmlspecialchars($client->address) ?></td>
+                    <td><?= htmlspecialchars($client->birthdate) ?></td>
+                    <td><?= htmlspecialchars($client->gender) ?></td>
+                    <td><?= htmlspecialchars($client->credit) ?></td>
+                    <td><?= htmlspecialchars($client->phone) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 </body>
 </html>
