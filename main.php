@@ -12,9 +12,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
     $phone = trim($_POST["phone"]);
 
     if ($surname && $name && $address && $birthdate && $gender && $credit && $phone) {
-        $stmt = $pdo->prepare("INSERT INTO clients (surname, name, address, birthdate, gender, credit, phone) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$surname, $name, $address, $birthdate, $gender, $credit, $phone]);
+        // Додавання клієнта в таблицю clients
+        $stmt = $pdo->prepare("INSERT INTO clients (surname, name, address, birthdate, gender, credit) 
+                               VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$surname, $name, $address, $birthdate, $gender, $credit]);
+        $clientId = $pdo->lastInsertId(); // Отримуємо id нового клієнта
+
+        // Додавання телефону в таблицю phones
+        $stmt = $pdo->prepare("INSERT INTO phones (client_id, phone) VALUES (?, ?)");
+        $stmt->execute([$clientId, $phone]);
+
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
     } else {
@@ -24,7 +31,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
 
 // Пошук за номером телефону
 $searchDigits = $_GET['search'] ?? '';
-$query = "SELECT * FROM clients WHERE phone LIKE ?";
+$query = "SELECT clients.*, phones.phone FROM clients 
+          JOIN phones ON clients.id = phones.client_id 
+          WHERE phones.phone LIKE ?";
 $stmt = $pdo->prepare($query);
 $stmt->execute(["%$searchDigits%"]);
 $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
