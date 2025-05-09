@@ -1,29 +1,20 @@
 <?php
+require_once 'db.php'; // Підключення до бази даних
 
-$filename = "clients.txt";
-
-function readClients($filename) {
-    if (!file_exists($filename)) return [];
-    $data = file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    return array_map(fn($line) => explode("|", $line), $data);
-}
-
-function addClient($filename, $clientData) {
-    $line = implode("|", $clientData) . "\n";
-    file_put_contents($filename, $line, FILE_APPEND | LOCK_EX);
-}
-
+// Додавання нового клієнта
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
     $surname = trim($_POST["surname"]);
     $name = trim($_POST["name"]);
     $address = trim($_POST["address"]);
-    $birthdate = trim($_POST["birthdate"]);
+    $birthdate = $_POST["birthdate"];
     $gender = trim($_POST["gender"]);
     $credit = trim($_POST["credit"]);
     $phone = trim($_POST["phone"]);
-    
+
     if ($surname && $name && $address && $birthdate && $gender && $credit && $phone) {
-        addClient($filename, [$surname, $name, $address, $birthdate, $gender, $credit, $phone]);
+        $stmt = $pdo->prepare("INSERT INTO clients (surname, name, address, birthdate, gender, credit, phone) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$surname, $name, $address, $birthdate, $gender, $credit, $phone]);
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
     } else {
@@ -31,12 +22,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["surname"])) {
     }
 }
 
-$clients = readClients($filename);
-
-// Фільтрація за номером телефону
+// Пошук за номером телефону
 $searchDigits = $_GET['search'] ?? '';
-$filteredClients = array_filter($clients, fn($client) => strpos($client[6], $searchDigits) !== false);
-
+$query = "SELECT * FROM clients WHERE phone LIKE ?";
+$stmt = $pdo->prepare($query);
+$stmt->execute(["%$searchDigits%"]);
+$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -130,15 +121,15 @@ $filteredClients = array_filter($clients, fn($client) => strpos($client[6], $sea
                 <th>Сума кредиту (грн)</th>
                 <th>Телефон</th>
             </tr>
-            <?php foreach ($filteredClients as $client): ?>
+            <?php foreach ($clients as $client): ?>
                 <tr>
-                    <td><?= htmlspecialchars($client[0]) ?></td>
-                    <td><?= htmlspecialchars($client[1]) ?></td>
-                    <td><?= htmlspecialchars($client[2]) ?></td>
-                    <td><?= htmlspecialchars($client[3]) ?></td>
-                    <td><?= htmlspecialchars($client[4]) ?></td>
-                    <td><?= htmlspecialchars($client[5]) ?></td>
-                    <td><?= htmlspecialchars($client[6]) ?></td>
+                    <td><?= htmlspecialchars($client['surname']) ?></td>
+                    <td><?= htmlspecialchars($client['name']) ?></td>
+                    <td><?= htmlspecialchars($client['address']) ?></td>
+                    <td><?= htmlspecialchars($client['birthdate']) ?></td>
+                    <td><?= htmlspecialchars($client['gender']) ?></td>
+                    <td><?= htmlspecialchars($client['credit']) ?></td>
+                    <td><?= htmlspecialchars($client['phone']) ?></td>
                 </tr>
             <?php endforeach; ?>
         </table>
